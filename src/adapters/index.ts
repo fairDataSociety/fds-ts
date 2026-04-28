@@ -1,0 +1,5 @@
+export type { StorageAdapter, AdapterCapabilities } from './interface.js'
+export { LocalAdapter } from './local.js'
+export type { LocalAdapterConfig } from './local.js'
+export { SwarmAdapter } from './swarm.js'
+export type { SwarmAdapterConfig } from './swarm.js'

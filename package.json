@@ -1,0 +1,51 @@
+{
+  "name": "@fairdatasociety/fds",
+  "version": "0.1.0",
+  "description": "Fair Data Society SDK — sovereign data for TypeScript. Identity, storage, messaging, sharing, exchange.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
+    "./adapters": { "import": "./dist/adapters/index.js", "types": "./dist/adapters/index.d.ts" }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@fairdatasociety/fds-id": "^0.1.1",
+    "@ethersphere/bee-js": "^11.0.0",
+    "@noble/ciphers": "^1.0.0",
+    "@noble/hashes": "^2.0.1",
+    "@noble/secp256k1": "^3.0.0",
+    "viem": "^2.0.0"
+  },
+  "peerDependencies": {
+    "@fairdrive/core": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@fairdrive/core": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.4.0",
+    "vitest": "^2.0.0"
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "publishConfig": { "access": "public" },
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fairDataSociety/fds-ts"
+  },
+  "keywords": [
+    "fair-data", "swarm", "ethereum", "decentralized", "storage",
+    "encryption", "identity", "escrow", "privacy", "web3", "sdk"
+  ]
+}
