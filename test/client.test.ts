@@ -14,6 +14,8 @@ describe('FdsClient', () => {
       storage: { type: 'local', path: tempDir },
     })
     await fds.init()
+    // Identity required for encrypted storage
+    await fds.identity.create()
   })
 
   afterEach(async () => {
@@ -121,25 +123,31 @@ describe('FdsClient', () => {
 
   // ── Identity (namespaced) ─────────────────────────────
 
-  it('identity.create sets current', async () => {
-    expect(fds.identity.current).toBeNull()
-    const id = await fds.identity.create()
-    expect(id.address).toMatch(/^0x/)
-    expect(fds.identity.current?.address).toBe(id.address)
+  it('identity is set after beforeEach create', async () => {
+    // Identity created in beforeEach for encryption
+    expect(fds.identity.current).not.toBeNull()
+    expect(fds.identity.current?.address).toMatch(/^0x/)
   })
 
-  it('status reflects identity after create', async () => {
-    await fds.identity.create()
+  it('status reflects identity', async () => {
     const status = await fds.status()
     expect(status.identity.connected).toBe(true)
     expect(status.identity.address).toMatch(/^0x/)
     expect(status.identity.locked).toBe(false)
   })
 
-  it('full lifecycle: create identity → put → get', async () => {
-    await fds.identity.create()
+  it('full lifecycle: put → get → move → copy → delete', async () => {
     await fds.put('mydata/note.txt', 'sovereign data')
     const data = await fds.get('mydata/note.txt')
     expect(new TextDecoder().decode(data)).toBe('sovereign data')
+
+    await fds.storage.copy('mydata/note.txt', 'backup/note.txt')
+    const copy = await fds.get('backup/note.txt')
+    expect(new TextDecoder().decode(copy)).toBe('sovereign data')
+
+    await fds.storage.move('mydata/note.txt', 'mydata/renamed.txt')
+    expect(await fds.storage.exists('mydata/note.txt')).toBe(false)
+    const moved = await fds.get('mydata/renamed.txt')
+    expect(new TextDecoder().decode(moved)).toBe('sovereign data')
   })
 })

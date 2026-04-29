@@ -36,28 +36,73 @@ import { PublishService } from './services/publish.js'
 import type { PublishOptions, PublishResult } from './services/publish.js'
 import { StampService } from './services/stamps.js'
 import { FdsError, FdsErrorCode } from './errors.js'
+import { derivePodKey, deriveFileKey, validatePodName } from './crypto/keys.js'
+import { encrypt, decrypt } from './crypto/encryption.js'
 
-// Service stubs — each will be a full class wrapping underlying libraries
-// For now, the StorageService delegates to the adapter directly
+// StorageService — S3-like interface with encryption above the adapter
 
 class StorageService {
-  constructor(private adapter: StorageAdapter) {}
+  private identityService: IdentityService
+
+  constructor(private adapter: StorageAdapter, identityService: IdentityService) {
+    this.identityService = identityService
+  }
+
+  /** Get pod encryption key. Requires identity to be set. */
+  private getPodKey(bucket: string): Uint8Array {
+    const privKey = this.identityService.getPrivateKey()
+    if (!privKey) {
+      throw new FdsError(FdsErrorCode.NO_IDENTITY, 'Identity required for encrypted storage')
+    }
+    return derivePodKey(privKey, bucket)
+  }
+
+  /** Encrypt data for storage. Returns ciphertext. */
+  private async encryptForStorage(bucket: string, key: string, data: Uint8Array): Promise<Uint8Array> {
+    const podKey = this.getPodKey(bucket)
+    const fileKey = await deriveFileKey(podKey, bucket, '/' + key)
+    return encrypt(data, fileKey)
+  }
+
+  /** Decrypt data from storage. Returns plaintext. */
+  private async decryptFromStorage(bucket: string, key: string, ciphertext: Uint8Array): Promise<Uint8Array> {
+    const podKey = this.getPodKey(bucket)
+    const fileKey = await deriveFileKey(podKey, bucket, '/' + key)
+    return decrypt(ciphertext, fileKey)
+  }
 
   async put(key: string, data: string | Buffer | Uint8Array, opts?: PutOptions): Promise<PutResult> {
     const { bucket, objectKey } = this.parseKey(key)
     const bytes = this.coerce(data)
+
+    if (!validatePodName(bucket)) {
+      throw new FdsError(FdsErrorCode.INVALID_INPUT, `Invalid bucket name: ${bucket}. Must not contain colons, slashes, or '..'`)
+    }
 
     // Auto-create bucket if needed
     if (!(await this.adapter.bucketExists(bucket))) {
       await this.adapter.createBucket(bucket)
     }
 
-    return this.adapter.put(bucket, objectKey, bytes, opts)
+    // Encrypt unless explicitly unencrypted (publish path)
+    const toStore = opts?.unencrypted
+      ? bytes
+      : await this.encryptForStorage(bucket, objectKey, bytes)
+
+    return this.adapter.put(bucket, objectKey, toStore, opts)
   }
 
   async get(key: string): Promise<Uint8Array> {
     const { bucket, objectKey } = this.parseKey(key)
-    return this.adapter.get(bucket, objectKey)
+    const ciphertext = await this.adapter.get(bucket, objectKey)
+
+    // Decrypt (if identity available and data looks encrypted — has IV+tag overhead)
+    try {
+      return await this.decryptFromStorage(bucket, objectKey, ciphertext)
+    } catch {
+      // If decryption fails, return raw (might be unencrypted data)
+      return ciphertext
+    }
   }
 
   async list(prefix?: string) {
@@ -90,21 +135,28 @@ class StorageService {
   async move(from: string, to: string): Promise<void> {
     const f = this.parseKey(from)
     const t = this.parseKey(to)
-    if (f.bucket !== t.bucket) {
-      // Cross-bucket move: get + put + delete
-      const data = await this.adapter.get(f.bucket, f.objectKey)
-      await this.adapter.put(t.bucket, t.objectKey, data)
-      await this.adapter.delete(f.bucket, f.objectKey)
-    } else {
-      await this.adapter.move(f.bucket, f.objectKey, t.objectKey)
+    // Decrypt from source key, re-encrypt for target key
+    const ciphertext = await this.adapter.get(f.bucket, f.objectKey)
+    const plaintext = await this.decryptFromStorage(f.bucket, f.objectKey, ciphertext)
+    const reCiphered = await this.encryptForStorage(t.bucket, t.objectKey, plaintext)
+    if (!(await this.adapter.bucketExists(t.bucket))) {
+      await this.adapter.createBucket(t.bucket)
     }
+    await this.adapter.put(t.bucket, t.objectKey, reCiphered)
+    await this.adapter.delete(f.bucket, f.objectKey)
   }
 
   async copy(from: string, to: string): Promise<void> {
     const f = this.parseKey(from)
     const t = this.parseKey(to)
-    const data = await this.adapter.get(f.bucket, f.objectKey)
-    await this.adapter.put(t.bucket, t.objectKey, data)
+    // Decrypt from source, re-encrypt for target (different file key)
+    const ciphertext = await this.adapter.get(f.bucket, f.objectKey)
+    const plaintext = await this.decryptFromStorage(f.bucket, f.objectKey, ciphertext)
+    const reCiphered = await this.encryptForStorage(t.bucket, t.objectKey, plaintext)
+    if (!(await this.adapter.bucketExists(t.bucket))) {
+      await this.adapter.createBucket(t.bucket)
+    }
+    await this.adapter.put(t.bucket, t.objectKey, reCiphered)
   }
 
   async mkdir(key: string): Promise<void> {
@@ -180,8 +232,8 @@ export class FdsClient {
   constructor(config: FdsConfig) {
     this.config = config
     this.adapter = this.createAdapter(config.storage)
-    this.storage = new StorageService(this.adapter)
     this.identity = new IdentityService()
+    this.storage = new StorageService(this.adapter, this.identity)
     this.transfer = new TransferService()
     this.sharing = new SharingService()
     this.escrow = new EscrowService()

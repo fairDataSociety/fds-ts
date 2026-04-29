@@ -9,11 +9,11 @@
  * The encryption key is derived from the user's wallet via WalletManager.deriveKey().
  */
 
-import { PodManager } from '@fairdrive/core'
-import type { PodManagerConfig, Pod } from '@fairdrive/core'
-import { FileManager } from '@fairdrive/core'
-import type { FileManagerConfig, UploadOptions as CoreUploadOptions } from '@fairdrive/core'
-import { WalletManager } from '@fairdrive/core'
+import { PodManager } from '../fairdrive/index.js'
+import type { PodManagerConfig, Pod } from '../fairdrive/index.js'
+import { FileManager } from '../fairdrive/index.js'
+import type { FileManagerConfig, UploadOptions as CoreUploadOptions } from '../fairdrive/index.js'
+import { WalletManager } from '../fairdrive/index.js'
 import type { StorageAdapter, AdapterCapabilities } from './interface.js'
 import type { ObjectMeta, ListResult, BucketInfo, PutOptions, PutResult } from '../types.js'
 import { FdsError, FdsErrorCode } from '../errors.js'
