@@ -719,7 +719,7 @@ Two independent audits: Claude security review + Codex adversarial audit (GPT-5.
 
 | # | Finding | Source | Attack | Fix |
 |---|---------|--------|--------|-----|
-| S1 | **Bee-native ACT may not enforce encryption.** `uploadWithAct()` creates grantees but uploads raw data. `downloadWithAct()` may bypass ACT and download reference directly. | Codex: client.ts:1849,1890 | Anyone with the Swarm reference can download the data, bypassing grantee restrictions. | Verify Bee-native ACT actually encrypts. If not, use Fairdrive ACT exclusively. Remove Bee-native ACT from SDK or clearly mark as non-encrypting. |
+| S1 | **Fairdrop ACT wrapper doesn't use Bee's native ACT encryption.** Bee API supports `{ act: true }` in UploadOptions and `{ actPublisher, actHistoryAddress }` in DownloadOptions — the Bee node handles encryption natively. But `client.ts:uploadWithAct()` calls `uploadData()` + `createGrantees()` separately without passing `act: true`. **Bee ACT IS secure — the wrapper has a bug.** | Codex: client.ts:1849; bee-js UploadOptions.act | Data uploaded without ACT encryption flag. Grantee list exists but data is unencrypted. | Fix `uploadWithAct()` to pass `{ act: true }` to `uploadData()`. Fix `downloadWithAct()` to pass `{ actPublisher, actHistoryAddress }` to `downloadData()`. This is a ~5 line fix, not a design flaw. |
 | S2 | **Adapter metadata leaks.** Bucket names (pod names) and object keys (file paths) pass to adapter in plaintext. On S3, provider sees `medical-records/hiv-test.pdf`. | Claude: adapter interface | Correlation attack: no decryption needed, metadata is enough. | Encrypt bucket names and object keys before adapter. Or clearly document S3/IPFS adapters are NOT private for metadata (block until v2). |
 
 ### HIGH
