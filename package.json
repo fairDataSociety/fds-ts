@@ -5,9 +5,13 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "bin": {
+    "fds": "dist/cli/index.js"
+  },
   "exports": {
     ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./adapters": { "import": "./dist/adapters/index.js", "types": "./dist/adapters/index.d.ts" }
+    "./adapters": { "import": "./dist/adapters/index.js", "types": "./dist/adapters/index.d.ts" },
+    "./cli": { "import": "./dist/cli/index.js", "types": "./dist/cli/index.d.ts" }
   },
   "scripts": {
     "build": "tsup",
