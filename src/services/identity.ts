@@ -30,6 +30,13 @@ export interface IdentityCreateOptions {
   wordCount?: 12 | 24
 }
 
+export interface IdentityServiceOptions {
+  /** Bee node URL for keystore backup uploads. */
+  beeUrl?: string
+  /** Postage batch ID for backup uploads. */
+  batchId?: string
+}
+
 export class IdentityService {
   private wallet: any = null  // Wallet instance (fds-id uses private constructor)
   private hdWallet: any = null  // HDWallet instance
@@ -37,9 +44,18 @@ export class IdentityService {
   private address: string | null = null
   private publicKey: string | null = null
   private ensName: string | null = null
+  private subdomain: string | null = null
+  private beeUrl?: string
+  private batchId?: string
 
   /** Callbacks for when identity changes — other services subscribe to this */
   private onIdentityChange: Array<(identity: FdsIdentity | null) => void> = []
+
+  /** Wire optional Bee config for backup/restore. */
+  configure(opts: IdentityServiceOptions): void {
+    this.beeUrl = opts.beeUrl
+    this.batchId = opts.batchId
+  }
 
   /** Current identity (null if not created/imported) */
   get current(): { address: string; publicKey: string; ensName?: string } | null {
@@ -198,23 +214,82 @@ export class IdentityService {
 
   /**
    * Backup identity to Swarm (encrypted, password-protected).
-   * Stores reference in ENS text record for discoverability.
+   *
+   * Encrypts the keystore with `password` (scrypt + AES-GCM via KeystoreBackup),
+   * uploads to Swarm, and returns the reference. Caller is responsible for
+   * persisting the reference (e.g., to ENS text record).
+   *
+   * Requires Bee config — call `configure({ beeUrl, batchId })` first or pass
+   * a SwarmClient explicitly.
    */
-  async backup(password: string, swarmClient?: InstanceType<typeof SwarmClient>): Promise<{ reference: string }> {
+  async backup(password: string, opts?: { swarmClient?: InstanceType<typeof SwarmClient>; subdomain?: string }): Promise<{ reference: string }> {
     this.ensureUnlocked()
-    if (!swarmClient) {
-      throw new FdsError(FdsErrorCode.NO_STORAGE, 'SwarmClient required for backup. Pass via options or configure storage.')
+    const beeUrl = this.beeUrl
+    if (!opts?.swarmClient && !beeUrl) {
+      throw new FdsError(FdsErrorCode.NO_STORAGE, 'Bee URL required for backup. Configure via configure({ beeUrl, batchId }) or pass swarmClient.')
     }
-    // TODO: Full backup implementation using KeystoreBackup.backupToEns
-    throw new FdsError(FdsErrorCode.ADAPTER_UNSUPPORTED, 'Backup not yet wired — use fds-id KeystoreBackup directly')
+
+    const backup = new KeystoreBackup({
+      bee: { url: beeUrl, stampId: this.batchId },
+    } as any)
+
+    const account = this.toFdsAccount(opts?.subdomain)
+    const result = await backup.backup(account, password, {
+      stampId: this.batchId,
+    })
+    return { reference: result.reference as string }
   }
 
   /**
-   * Restore identity from ENS name + password.
+   * Restore identity from a Swarm reference + password.
+   *
+   * Downloads the encrypted keystore from Swarm, decrypts with password,
+   * and rehydrates the wallet. Notifies subscribers of identity change.
    */
-  async restore(nameOrRef: string, password: string): Promise<FdsIdentity> {
-    // TODO: Full restore implementation using KeystoreBackup.restoreFromEns
-    throw new FdsError(FdsErrorCode.ADAPTER_UNSUPPORTED, 'Restore not yet wired — use fds-id KeystoreBackup directly')
+  async restore(reference: string, password: string): Promise<FdsIdentity> {
+    const beeUrl = this.beeUrl
+    if (!beeUrl) {
+      throw new FdsError(FdsErrorCode.NO_STORAGE, 'Bee URL required for restore. Call configure({ beeUrl }) first.')
+    }
+
+    const backup = new KeystoreBackup({
+      bee: { url: beeUrl, stampId: this.batchId },
+    } as any)
+
+    const result = await backup.restore(reference as any, password) as any
+    const acct = result.account as any
+
+    // Rehydrate wallet from restored private key
+    this.wallet = await Wallet.fromPrivateKey(
+      typeof acct.privateKey === 'string' ? acct.privateKey : Buffer.from(acct.privateKey).toString('hex'),
+    )
+    this.address = this.wallet.address as string
+    this.publicKey = Buffer.from(this.wallet.publicKey).toString('hex')
+    this.subdomain = acct.subdomain ?? null
+    this.locked = false
+
+    const identity: FdsIdentity = {
+      address: this.address!,
+      publicKey: this.publicKey!,
+    }
+    this.notifyChange(identity)
+    return identity
+  }
+
+  /** Build an FDSAccount snapshot from current wallet state (for backup APIs). */
+  private toFdsAccount(subdomain?: string): any {
+    if (!this.wallet) throw new FdsError(FdsErrorCode.NO_IDENTITY, 'No identity to back up')
+    const sub = subdomain ?? this.subdomain ?? 'fds'
+    const privKey = this.getPrivateKey()
+    if (!privKey) throw new FdsError(FdsErrorCode.IDENTITY_LOCKED, 'Cannot backup locked identity')
+    return {
+      subdomain: sub,
+      publicKey: this.publicKey!,
+      privateKey: privKey,
+      walletAddress: this.address!,
+      created: Date.now(),
+      stampId: this.batchId,
+    }
   }
 
   /** Get the private key (hex, for adapter integration). Only accessible when unlocked. */

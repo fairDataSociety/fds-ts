@@ -239,20 +239,39 @@ export class FdsClient {
   constructor(config: FdsConfig) {
     this.config = config
     this.adapter = this.createAdapter(config.storage)
+
+    // Determine Bee + batchId — explicit > swarm storage config
+    const beeUrl = config.beeUrl
+      ?? (typeof config.storage === 'object' && 'type' in config.storage && config.storage.type === 'swarm' && 'beeUrl' in config.storage ? config.storage.beeUrl : undefined)
+    const batchId = config.batchId
+      ?? (typeof config.storage === 'object' && 'type' in config.storage && config.storage.type === 'swarm' && 'batchId' in config.storage ? config.storage.batchId : undefined)
+
+    let bee: any = undefined
+    if (beeUrl) {
+      try {
+        // Lazy import — Bee is optional (local-only mode does not need it)
+        const { Bee } = require('@ethersphere/bee-js')
+        bee = new Bee(beeUrl)
+      } catch {
+        // bee-js not installed or import failed — services that need it will throw NO_STORAGE
+      }
+    }
+
     this.identity = new IdentityService()
+    this.identity.configure({ beeUrl, batchId })
     this.storage = new StorageService(this.adapter, this.identity)
     this.transfer = new TransferService()
-    this.transfer.init(this.adapter, this.identity)
+    this.transfer.init(this.adapter, this.identity, bee, batchId)
     this.sharing = new SharingService()
-    this.sharing.init(this.adapter)
+    this.sharing.init(this.adapter, this.identity, bee, batchId)
     this.escrow = new EscrowService()
-    this.escrow.init(this.adapter, this.identity, config.chain)
+    this.escrow.init(this.adapter, this.identity, config.chain, bee, batchId)
     this.stamps = new StampService()
-    this.stamps.init(this.adapter)
+    this.stamps.init(this.adapter, bee, batchId)
 
     // publish is both a service and a callable shortcut
     const publishService = new PublishService()
-    publishService.init(this.adapter)
+    publishService.init(this.adapter, bee, batchId)
     const publishFn = (data: string | Buffer | Uint8Array, opts?: PublishOptions) => publishService.upload(data, opts)
     Object.assign(publishFn, publishService)
     this.publish = publishFn as any

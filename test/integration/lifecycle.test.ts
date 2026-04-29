@@ -10,7 +10,7 @@ import { mkdtemp, rm, readFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { FdsClient } from '../../src/client.js'
-import { generateEphemeralKeyPair, decryptFromSender } from '../../src/crypto/ecdh.js'
+import { generateEphemeralKeyPair, encryptForRecipient, decryptFromSender } from '../../src/crypto/ecdh.js'
 
 describe('SDK Lifecycle', () => {
   let fds: FdsClient
@@ -71,24 +71,21 @@ describe('SDK Lifecycle', () => {
     expect(await fds.storage.exists('docs/notes.txt')).toBe(false)
   })
 
-  it('send encrypted message to recipient', async () => {
+  it('send requires Bee node — throws NO_STORAGE without one', async () => {
     await fds.identity.create()
-
-    // Simulate recipient
     const recipient = generateEphemeralKeyPair()
     const recipientHex = '0x' + Buffer.from(recipient.publicKey).toString('hex')
+    // No Bee configured → send fails fast (no fake outbox)
+    await expect(fds.send(recipientHex, 'confidential data')).rejects.toMatchObject({ code: 'NO_STORAGE' })
+  })
 
-    // Send
-    const result = await fds.send(recipientHex, 'confidential data', { filename: 'secret.enc' })
-    expect(result.encrypted).toBe(true)
-
-    // Verify the encrypted file exists in outbox
-    const raw = await readFile(join(tempDir, '__outbox', 'secret.enc'))
-    expect(raw.length).toBeGreaterThan(0)
-
-    // Recipient can decrypt
-    const decrypted = decryptFromSender(new Uint8Array(raw), recipient.privateKey)
-    expect(new TextDecoder().decode(decrypted)).toBe('confidential data')
+  it('ECDH encrypt/decrypt round-trips end-to-end', () => {
+    // Sender encrypts, recipient decrypts — pure crypto path verification
+    const recipient = generateEphemeralKeyPair()
+    const message = 'confidential data'
+    const encrypted = encryptForRecipient(new TextEncoder().encode(message), recipient.publicKey)
+    const decrypted = decryptFromSender(encrypted, recipient.privateKey)
+    expect(new TextDecoder().decode(decrypted)).toBe(message)
   })
 
   it('publish stores unencrypted data', async () => {

@@ -14,7 +14,7 @@
 import type { Bee, PrivateKey } from '@ethersphere/bee-js'
 import { keccak_256 } from '@noble/hashes/sha3.js'
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils.js'
-import type { InboxParams, GSOCMessage } from './types.js'
+import type { InboxParams, GSOCMessage } from './sdk-types.js'
 
 // Version prefix for inbox identifiers
 export const INBOX_PREFIX = 'fairdrop-inbox-v2'

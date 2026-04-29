@@ -14,7 +14,24 @@ export interface FdsConfig {
   chain?: {
     rpcUrl: string
     chainId?: number  // default: 8453 (Base)
+    /** DataEscrow contract address (required for on-chain escrow ops) */
+    escrowContract?: `0x${string}`
   }
+
+  /** Bee node URL for GSOC inbox + public publishing.
+   *  Optional — if not set, transfer.send/receive throw NO_BEE.
+   *  Auto-derived from storage config when storage type is 'swarm'. */
+  beeUrl?: string
+
+  /** Postage batch ID for uploads through the Bee node.
+   *  Required for any operation that writes to Swarm (send, publish, ACT share). */
+  batchId?: string
+}
+
+export interface InboxParams {
+  targetOverlay: string
+  baseIdentifier: string
+  proximity: number
 }
 
 export type StorageConfig =
@@ -99,6 +116,8 @@ export interface SendOptions {
   filename?: string
   contentType?: string
   note?: string
+  /** If true, do not attach sender identity to the inbox notification (S7 — application-layer only) */
+  anonymous?: boolean
 }
 
 export interface SendResult {
