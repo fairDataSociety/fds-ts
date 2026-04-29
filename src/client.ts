@@ -239,9 +239,11 @@ export class FdsClient {
     this.sharing = new SharingService()
     this.escrow = new EscrowService()
     this.stamps = new StampService()
+    this.stamps.init(this.adapter)
 
     // publish is both a service and a callable shortcut
     const publishService = new PublishService()
+    publishService.init(this.adapter)
     const publishFn = (data: string | Buffer | Uint8Array, opts?: PublishOptions) => publishService.upload(data, opts)
     Object.assign(publishFn, publishService)
     this.publish = publishFn as any
