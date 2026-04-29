@@ -237,7 +237,9 @@ export class FdsClient {
     this.transfer = new TransferService()
     this.transfer.init(this.adapter, this.identity)
     this.sharing = new SharingService()
+    this.sharing.init(this.adapter)
     this.escrow = new EscrowService()
+    this.escrow.init(this.adapter, this.identity, config.chain)
     this.stamps = new StampService()
     this.stamps.init(this.adapter)
 

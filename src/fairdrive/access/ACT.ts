@@ -84,7 +84,7 @@ export class ACT {
       const ref = await this.stamperUploader.upload(data);
       return ref.toHex();
     }
-    const result = await this.bee.uploadData(this.postageBatchId, data);
+    const result = await this.bee.uploadData(this.postageBatchId!, data);
     return refToString(result.reference);
   }
 
