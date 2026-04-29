@@ -3,6 +3,7 @@
  */
 
 import type { StorageAdapter } from './adapters/interface.js'
+import type { Logger } from './utils/logger.js'
 
 // ─── Configuration ──────────────────────────────────────
 
@@ -26,6 +27,10 @@ export interface FdsConfig {
   /** Postage batch ID for uploads through the Bee node.
    *  Required for any operation that writes to Swarm (send, publish, ACT share). */
   batchId?: string
+
+  /** Optional structured logger for production observability.
+   *  Default: no-op. Use consoleLogger(level) for development or wire your own. */
+  logger?: Logger
 }
 
 export interface InboxParams {

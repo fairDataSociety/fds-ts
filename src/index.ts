@@ -31,3 +31,9 @@ export type { StorageAdapter, AdapterCapabilities } from './adapters/interface.j
 export { LocalAdapter } from './adapters/local.js'
 // SwarmAdapter requires @fairdrive/core (optional peer dep)
 // Use: const fds = new FdsClient({ storage: { type: 'swarm', beeUrl: '...' } })
+
+// Utilities (production helpers)
+export type { Logger, LogLevel } from './utils/logger.js'
+export { noopLogger, consoleLogger, timed, requestId } from './utils/logger.js'
+export type { RetryOptions } from './utils/retry.js'
+export { retry, withRetry } from './utils/retry.js'
