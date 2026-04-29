@@ -79,9 +79,12 @@ class StorageService {
       throw new FdsError(FdsErrorCode.INVALID_INPUT, `Invalid bucket name: ${bucket}. Must not contain colons, slashes, or '..'`)
     }
 
-    // Auto-create bucket if needed
-    if (!(await this.adapter.bucketExists(bucket))) {
+    // Auto-create bucket if needed (idempotent — race-safe)
+    try {
       await this.adapter.createBucket(bucket)
+    } catch (err: any) {
+      if (err?.code !== 'BUCKET_EXISTS') throw err
+      // already exists, fine
     }
 
     // Encrypt unless explicitly unencrypted (publish path)
@@ -139,8 +142,10 @@ class StorageService {
     const ciphertext = await this.adapter.get(f.bucket, f.objectKey)
     const plaintext = await this.decryptFromStorage(f.bucket, f.objectKey, ciphertext)
     const reCiphered = await this.encryptForStorage(t.bucket, t.objectKey, plaintext)
-    if (!(await this.adapter.bucketExists(t.bucket))) {
+    try {
       await this.adapter.createBucket(t.bucket)
+    } catch (err: any) {
+      if (err?.code !== 'BUCKET_EXISTS') throw err
     }
     await this.adapter.put(t.bucket, t.objectKey, reCiphered)
     await this.adapter.delete(f.bucket, f.objectKey)
@@ -153,8 +158,10 @@ class StorageService {
     const ciphertext = await this.adapter.get(f.bucket, f.objectKey)
     const plaintext = await this.decryptFromStorage(f.bucket, f.objectKey, ciphertext)
     const reCiphered = await this.encryptForStorage(t.bucket, t.objectKey, plaintext)
-    if (!(await this.adapter.bucketExists(t.bucket))) {
+    try {
       await this.adapter.createBucket(t.bucket)
+    } catch (err: any) {
+      if (err?.code !== 'BUCKET_EXISTS') throw err
     }
     await this.adapter.put(t.bucket, t.objectKey, reCiphered)
   }
