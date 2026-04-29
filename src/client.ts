@@ -258,7 +258,7 @@ export class FdsClient {
     }
 
     this.identity = new IdentityService()
-    this.identity.configure({ beeUrl, batchId })
+    this.identity.configure({ beeUrl, batchId, rpcUrl: config.chain?.rpcUrl })
     this.storage = new StorageService(this.adapter, this.identity)
     this.transfer = new TransferService()
     this.transfer.init(this.adapter, this.identity, bee, batchId)

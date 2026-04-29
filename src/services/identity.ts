@@ -51,10 +51,14 @@ export class IdentityService {
   /** Callbacks for when identity changes — other services subscribe to this */
   private onIdentityChange: Array<(identity: FdsIdentity | null) => void> = []
 
-  /** Wire optional Bee config for backup/restore. */
-  configure(opts: IdentityServiceOptions): void {
+  /** RPC URL for on-chain ENS resolution */
+  private rpcUrl?: string
+
+  /** Wire optional Bee + RPC config for backup/restore + ENS resolution. */
+  configure(opts: IdentityServiceOptions & { rpcUrl?: string }): void {
     this.beeUrl = opts.beeUrl
     this.batchId = opts.batchId
+    this.rpcUrl = opts.rpcUrl
   }
 
   /** Current identity (null if not created/imported) */
@@ -116,16 +120,99 @@ export class IdentityService {
   }
 
   /**
-   * Resolve an ENS name to address + public key.
+   * Resolve an ENS name to address + public key + inbox params.
+   *
+   * Three-tier strategy:
+   * 1. parseENSName for hex pubkey or 0x address embedded in the name
+   * 2. On-chain lookup (with RPC configured): resolver address, addr(node),
+   *    and text records (eth.fairdata.publicKey, FDS_TEXT_RECORDS.PUBLIC_KEY,
+   *    legacy 'publicKey').
+   * 3. Returns whatever was resolved; missing fields are undefined.
    */
-  async resolve(name: string): Promise<{ address?: string; publicKey?: string }> {
+  async resolve(name: string): Promise<{ address?: string; publicKey?: string; inbox?: any }> {
     const parsed = parseENSName(name)
-    // Full resolution requires an RPC-connected ENS client
-    // For now, return the parsed components
-    return {
-      address: parsed.address ?? undefined,
-      publicKey: parsed.publicKey ?? undefined,
+    let address: string | undefined = parsed.address ?? undefined
+    let publicKey: string | undefined = parsed.publicKey ?? undefined
+
+    // No RPC → return parsed components only
+    if (!this.rpcUrl) {
+      return { address, publicKey }
     }
+
+    // On-chain resolution
+    try {
+      const { createPublicClient, http, namehash } = await import('viem')
+      const { mainnet } = await import('viem/chains')
+
+      const client = createPublicClient({
+        chain: mainnet,
+        transport: http(this.rpcUrl),
+      })
+
+      // Build full ENS name (e.g. "alice.fairdrop.eth")
+      const fullName = name.includes('.') ? name : `${name}.fairdrop.eth`
+      const node = namehash(fullName)
+
+      // ENS Registry: 0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e
+      const ENS_REGISTRY = '0x00000000000C2E074eC69A0dFb2997BA6C7d2e1e' as `0x${string}`
+
+      const resolverAddress = await client.readContract({
+        address: ENS_REGISTRY,
+        abi: [{ type: 'function', name: 'resolver', stateMutability: 'view', inputs: [{ name: 'node', type: 'bytes32' }], outputs: [{ type: 'address' }] }],
+        functionName: 'resolver',
+        args: [node],
+      }) as `0x${string}`
+
+      if (resolverAddress && resolverAddress !== '0x0000000000000000000000000000000000000000') {
+        const resolverAbi = [
+          { type: 'function', name: 'addr', stateMutability: 'view', inputs: [{ name: 'node', type: 'bytes32' }], outputs: [{ type: 'address' }] },
+          { type: 'function', name: 'text', stateMutability: 'view', inputs: [{ name: 'node', type: 'bytes32' }, { name: 'key', type: 'string' }], outputs: [{ type: 'string' }] },
+        ] as const
+
+        // Address resolution
+        if (!address) {
+          try {
+            const resolved = await client.readContract({
+              address: resolverAddress,
+              abi: resolverAbi,
+              functionName: 'addr',
+              args: [node],
+            }) as string
+            if (resolved && resolved !== '0x0000000000000000000000000000000000000000') {
+              address = resolved
+            }
+          } catch { /* no addr record */ }
+        }
+
+        // Public key — try multiple text record keys
+        if (!publicKey) {
+          const keys = [
+            (FDS_TEXT_RECORDS as any)?.PUBLIC_KEY,
+            'eth.fairdata.publicKey',
+            'publicKey',
+          ].filter(Boolean) as string[]
+
+          for (const key of keys) {
+            try {
+              const value = await client.readContract({
+                address: resolverAddress,
+                abi: resolverAbi,
+                functionName: 'text',
+                args: [node, key],
+              }) as string
+              if (value && value.length > 0) {
+                publicKey = value.startsWith('0x') ? value.slice(2) : value
+                break
+              }
+            } catch { /* continue */ }
+          }
+        }
+      }
+    } catch {
+      // Resolution failed — return whatever we already have
+    }
+
+    return { address, publicKey }
   }
 
   /**

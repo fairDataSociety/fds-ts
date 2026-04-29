@@ -27,7 +27,9 @@ import { DataEscrowABI } from '../fairdrop/abi/DataEscrow.js'
 import {
   createKeyCommitment,
   encryptKeyForBuyer,
+  decryptKeyAsBuyer,
   serializeEncryptedKey,
+  deserializeEncryptedKey,
   createEncryptedKeyCommitment,
 } from '../fairdrop/crypto/escrow.js'
 import { NodeCryptoProvider } from '../fairdrop/crypto/node.js'
@@ -252,17 +254,129 @@ export class EscrowService {
   }
 
   /**
-   * Buy = fund + wait for key reveal + decrypt.
-   * Returns decrypted plaintext (after seller has revealed key on-chain).
-   * Phase 1 implementation: fund only — caller polls for key reveal separately.
+   * Buy: fund the escrow, wait for seller's key reveal, decrypt and verify.
+   *
+   * Steps:
+   * 1. Fund the escrow on-chain
+   * 2. Poll for KeyRevealed event (seller has revealed encrypted key)
+   * 3. Decrypt the encrypted key with our private key (ECDH)
+   * 4. Download encrypted blob from Swarm
+   * 5. Verify content hash matches on-chain
+   * 6. Decrypt and return plaintext
+   *
+   * Caller can split this into fund() + awaitKeyReveal() + decryptPurchased()
+   * for finer control (e.g., bail out before pay, custom timeouts).
    */
-  async buy(escrowId: bigint): Promise<Uint8Array> {
+  async buy(escrowId: bigint, opts?: { swarmReference?: string; timeoutMs?: number }): Promise<Uint8Array> {
     if (!this.hasChain) {
       throw new FdsError(FdsErrorCode.CHAIN_UNREACHABLE, 'buy requires chain mode')
     }
     await this.fund(escrowId)
-    // Caller must wait for KeyRevealed event and call decryptPurchased
-    throw new FdsError(FdsErrorCode.ADAPTER_UNSUPPORTED, 'buy() funds the escrow; await KeyRevealed event then call decryptPurchased(escrowId, encryptedKey)')
+    const encryptedKey = await this.awaitKeyReveal(escrowId, opts?.timeoutMs ?? 600_000)
+    if (!opts?.swarmReference) {
+      throw new FdsError(FdsErrorCode.INVALID_INPUT, 'buy() requires opts.swarmReference (out-of-band from seller). Use fund() + awaitKeyReveal() + decryptPurchased() for streaming flow.')
+    }
+    return this.decryptPurchased(escrowId, opts.swarmReference, encryptedKey)
+  }
+
+  /**
+   * Wait for seller's KeyRevealed event for a specific escrow.
+   * Polls historic logs first, then watches for new events. Times out after `timeoutMs`.
+   */
+  async awaitKeyReveal(escrowId: bigint, timeoutMs = 600_000): Promise<Uint8Array> {
+    if (!this.hasChain) {
+      throw new FdsError(FdsErrorCode.CHAIN_UNREACHABLE, 'awaitKeyReveal requires chain mode')
+    }
+    const publicClient = await this.getPublicClient()
+    const { parseAbiItem, decodeEventLog } = await import('viem')
+
+    const eventAbi = parseAbiItem('event KeyRevealed(uint256 indexed escrowId, bytes encryptedKeyForBuyer)')
+    const fromBlock = await publicClient.getBlockNumber().then((n: bigint) => n - 1000n).catch(() => 0n)
+
+    // Check historic logs first
+    const historic = await publicClient.getLogs({
+      address: this.chainConfig!.escrowContract!,
+      event: eventAbi as any,
+      args: { escrowId },
+      fromBlock,
+      toBlock: 'latest',
+    })
+    if (historic.length > 0) {
+      const last = historic[historic.length - 1]
+      const decoded = decodeEventLog({ abi: [eventAbi], data: last.data, topics: last.topics }) as any
+      return Uint8Array.from(Buffer.from((decoded.args.encryptedKeyForBuyer as string).slice(2), 'hex'))
+    }
+
+    // Poll for new events
+    const start = Date.now()
+    const pollInterval = 5000
+    while (Date.now() - start < timeoutMs) {
+      await new Promise(r => setTimeout(r, pollInterval))
+      const fresh = await publicClient.getLogs({
+        address: this.chainConfig!.escrowContract!,
+        event: eventAbi as any,
+        args: { escrowId },
+        fromBlock,
+        toBlock: 'latest',
+      })
+      if (fresh.length > 0) {
+        const last = fresh[fresh.length - 1]
+        const decoded = decodeEventLog({ abi: [eventAbi], data: last.data, topics: last.topics }) as any
+        return Uint8Array.from(Buffer.from((decoded.args.encryptedKeyForBuyer as string).slice(2), 'hex'))
+      }
+    }
+    throw new FdsError(FdsErrorCode.CHAIN_UNREACHABLE, `Timeout waiting for KeyRevealed event for escrow ${escrowId}`)
+  }
+
+  /**
+   * Decrypt purchased data after seller has revealed the encrypted key.
+   *
+   * Uses our private key to decrypt the ECDH-wrapped DEK, then downloads the
+   * encrypted blob from Swarm and decrypts it. Verifies content hash matches
+   * the on-chain commitment before returning plaintext.
+   */
+  async decryptPurchased(
+    escrowId: bigint,
+    swarmReference: string,
+    encryptedKeyForBuyer: Uint8Array,
+  ): Promise<Uint8Array> {
+    if (!this.bee) {
+      throw new FdsError(FdsErrorCode.NO_STORAGE, 'Bee node required to download purchased data')
+    }
+    if (!this.identity) {
+      throw new FdsError(FdsErrorCode.NO_IDENTITY, 'Identity required to decrypt purchased data')
+    }
+    const privKey = this.identity.getPrivateKey()
+    if (!privKey) {
+      throw new FdsError(FdsErrorCode.IDENTITY_LOCKED, 'Identity locked')
+    }
+    const buyerPrivKey = Uint8Array.from(Buffer.from(privKey.startsWith('0x') ? privKey.slice(2) : privKey, 'hex'))
+
+    // 1. Decrypt the encryption key (ECDH)
+    const encryptedKeyPackage = deserializeEncryptedKey(encryptedKeyForBuyer)
+    const decryptionKey = await decryptKeyAsBuyer(this.cryptoProvider, encryptedKeyPackage, buyerPrivKey)
+
+    // 2. Download encrypted blob from Swarm
+    const blob = await this.bee.downloadData(swarmReference)
+    const encryptedBlob = blob.toUint8Array()
+
+    // 3. Verify content hash matches on-chain commitment
+    const details = await this.chainEscrowDetails(escrowId)
+    const actualHash = keccak_256(encryptedBlob)
+    const expectedHashHex = details.contentHash.startsWith('0x') ? details.contentHash.slice(2) : details.contentHash
+    const expectedHash = Uint8Array.from(Buffer.from(expectedHashHex, 'hex'))
+    if (!constantTimeEqual(actualHash, expectedHash)) {
+      throw new FdsError(FdsErrorCode.ESCROW_WRONG_STATE, 'Content hash mismatch — downloaded data does not match on-chain commitment')
+    }
+
+    // 4. Decrypt with AES-GCM (IV is first 12 bytes of blob)
+    const iv = encryptedBlob.slice(0, 12)
+    const ciphertext = encryptedBlob.slice(12)
+    try {
+      return await this.cryptoProvider.aesGcmDecrypt(ciphertext, decryptionKey, iv)
+    } catch (e: any) {
+      throw new FdsError(FdsErrorCode.ESCROW_WRONG_STATE, `Decryption failed: ${e?.message || e}`)
+    }
   }
 
   /**
@@ -545,7 +659,9 @@ export class EscrowService {
   }
 }
 
-// Add ESCROW_INVALID_STATE if not present
-declare module '../errors.js' {
-  // Reusing existing codes; ESCROW_INVALID_STATE exists in fairdrop, map to ESCROW_NOT_FOUND if missing
+function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i]
+  return diff === 0
 }
