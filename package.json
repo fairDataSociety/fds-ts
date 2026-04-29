@@ -6,12 +6,26 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "fds": "dist/cli/index.js"
+    "fds": "dist/cli/index.js",
+    "fds-mcp": "dist/mcp/index.js"
   },
   "exports": {
-    ".": { "import": "./dist/index.js", "types": "./dist/index.d.ts" },
-    "./adapters": { "import": "./dist/adapters/index.js", "types": "./dist/adapters/index.d.ts" },
-    "./cli": { "import": "./dist/cli/index.js", "types": "./dist/cli/index.d.ts" }
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./adapters": {
+      "import": "./dist/adapters/index.js",
+      "types": "./dist/adapters/index.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/cli/index.js",
+      "types": "./dist/cli/index.d.ts"
+    },
+    "./mcp": {
+      "import": "./dist/mcp/index.js",
+      "types": "./dist/mcp/index.d.ts"
+    }
   },
   "scripts": {
     "build": "tsup",
@@ -22,8 +36,9 @@
     "prepublishOnly": "npm run build"
   },
   "dependencies": {
-    "@fairdatasociety/fds-id": "^0.1.1",
     "@ethersphere/bee-js": "^11.0.0",
+    "@fairdatasociety/fds-id": "^0.1.1",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@noble/ciphers": "^1.0.0",
     "@noble/hashes": "^2.0.1",
     "@noble/secp256k1": "^3.0.0",
@@ -41,15 +56,30 @@
     "typescript": "^5.4.0",
     "vitest": "^2.0.0"
   },
-  "files": ["dist", "README.md", "LICENSE"],
-  "publishConfig": { "access": "public" },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "license": "BSD-3-Clause",
   "repository": {
     "type": "git",
     "url": "https://github.com/fairDataSociety/fds-ts"
   },
   "keywords": [
-    "fair-data", "swarm", "ethereum", "decentralized", "storage",
-    "encryption", "identity", "escrow", "privacy", "web3", "sdk"
+    "fair-data",
+    "swarm",
+    "ethereum",
+    "decentralized",
+    "storage",
+    "encryption",
+    "identity",
+    "escrow",
+    "privacy",
+    "web3",
+    "sdk"
   ]
 }
