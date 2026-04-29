@@ -67,8 +67,8 @@ import type {
   PrepareEscrowResult,
   PrepareCommitKeyResult,
   PrepareTransactionResult,
-} from './types.js'
-import { EscrowState } from './types.js'
+} from './sdk-types.js'
+import { EscrowState } from './sdk-types.js'
 import { DataEscrowABI } from './abi/DataEscrow.js'
 
 /**
