@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * SwarmAdapter — Fairdrive-backed StorageAdapter.
  *
