@@ -40,9 +40,9 @@ let escrowCounter = 0
 export class EscrowService {
   private adapter?: StorageAdapter
   private identity?: IdentityService
-  private chainConfig?: { rpcUrl: string; chainId: number }
+  private chainConfig?: { rpcUrl: string; chainId?: number }
 
-  init(adapter: StorageAdapter, identity: IdentityService, chain?: { rpcUrl: string; chainId: number }): void {
+  init(adapter: StorageAdapter, identity: IdentityService, chain?: { rpcUrl: string; chainId?: number }): void {
     this.adapter = adapter
     this.identity = identity
     this.chainConfig = chain
