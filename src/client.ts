@@ -28,6 +28,7 @@ import type {
 } from './types.js'
 import type { StorageAdapter } from './adapters/interface.js'
 import { LocalAdapter } from './adapters/local.js'
+import { SwarmAdapter } from './adapters/swarm.js'
 import { IdentityService } from './services/identity.js'
 import { TransferService } from './services/transfer.js'
 import { SharingService } from './services/sharing.js'
@@ -357,19 +358,10 @@ export class FdsClient {
         if (!('beeUrl' in storageConfig)) {
           throw new FdsError(FdsErrorCode.INVALID_INPUT, 'Swarm storage requires beeUrl or gateway')
         }
-        // SwarmAdapter requires @fairdrive/core (optional peer dep)
-        try {
-          const { SwarmAdapter } = require('./adapters/swarm.js')
-          return new SwarmAdapter({
-            beeUrl: storageConfig.beeUrl,
-            batchId: storageConfig.batchId,
-          })
-        } catch {
-          throw new FdsError(
-            FdsErrorCode.ADAPTER_UNSUPPORTED,
-            'Swarm adapter requires @fairdrive/core. Install: npm install @fairdrive/core'
-          )
-        }
+        return new SwarmAdapter({
+          beeUrl: storageConfig.beeUrl,
+          batchId: storageConfig.batchId,
+        })
       }
       default:
         throw new FdsError(FdsErrorCode.INVALID_INPUT, `Unknown storage type: ${(storageConfig as any).type}`)

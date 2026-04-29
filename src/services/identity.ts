@@ -115,7 +115,9 @@ export class IdentityService {
       // mnemonic NOT returned on import — user already has it
     }
 
-    this.notifyChange(identity)
+    // Internal notification carries mnemonic so adapters (e.g., SwarmAdapter)
+    // can wire WalletManager. Caller-facing identity object excludes it.
+    this.notifyChange({ ...identity, mnemonic })
     return identity
   }
 

@@ -39,7 +39,8 @@ const DEFAULT_BEE = process.env.FDS_TEST_BEE_URL || ''  // empty = skip Bee test
 const DEFAULT_RPC = process.env.FDS_TEST_RPC_URL || 'https://ethereum-sepolia-rpc.publicnode.com'
 const DEFAULT_BATCH = process.env.FDS_TEST_BATCH_ID || ''  // empty = no uploads
 const SEPOLIA_CHAIN_ID = 11155111
-const SEPOLIA_DATA_ESCROW = '0xa226f5C8eB1D1b0cb0BFA61da0bFc6A21B14b6'  // from CLAUDE.md (truncated, real address has 40 hex chars)
+// DataEscrowV4 proxy on Sepolia (verified deployed, owner/arbiter 0x800e...033b)
+const SEPOLIA_DATA_ESCROW = '0x6915ecEe85dC44457324c7243E44a4E68c0eA112'
 
 export const testConfig: TestConfig = {
   beeUrl: DEFAULT_BEE || undefined,

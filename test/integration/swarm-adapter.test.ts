@@ -16,7 +16,7 @@ describe('SwarmAdapter Integration', () => {
     beeUp = await isBeeAvailable()
   })
 
-  it.skipIf(() => !process.env.FDS_TEST_BEE_URL || !process.env.FDS_TEST_BATCH_ID)(
+  it.skipIf(!process.env.FDS_TEST_BEE_URL || !process.env.FDS_TEST_BATCH_ID)(
     'put → get round-trips encrypted data through Swarm',
     async () => {
       if (!beeUp) return
@@ -43,7 +43,7 @@ describe('SwarmAdapter Integration', () => {
     180000,
   )
 
-  it.skipIf(() => !process.env.FDS_TEST_BEE_URL || !process.env.FDS_TEST_BATCH_ID)(
+  it.skipIf(!process.env.FDS_TEST_BEE_URL || !process.env.FDS_TEST_BATCH_ID)(
     'publish uploads unencrypted via /bzz',
     async () => {
       if (!beeUp) return

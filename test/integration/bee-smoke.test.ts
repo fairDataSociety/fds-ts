@@ -18,7 +18,7 @@ describe('Bee Smoke', () => {
     }
   })
 
-  it.skipIf(() => !process.env.FDS_TEST_BEE_URL)('Bee /health responds', async () => {
+  it.skipIf(!process.env.FDS_TEST_BEE_URL)('Bee /health responds', async () => {
     if (!beeAvailable) return
     const res = await fetch(`${testConfig.beeUrl}/health`)
     expect(res.ok).toBe(true)
@@ -26,7 +26,7 @@ describe('Bee Smoke', () => {
     expect(body.status).toBe('ok')
   })
 
-  it.skipIf(() => !process.env.FDS_TEST_BEE_URL)('Bee /stamps lists postage batches', async () => {
+  it.skipIf(!process.env.FDS_TEST_BEE_URL)('Bee /stamps lists postage batches', async () => {
     if (!beeAvailable) return
     const res = await fetch(`${testConfig.beeUrl}/stamps`)
     expect(res.ok).toBe(true)
