@@ -1,9 +1,11 @@
 /**
- * @fairdatasociety/fds/fairdrive — Fairdrive primitives (drop-in for @fairdrive/core).
+ * @fairdatasociety/fds/fairdrive — Browser-safe Fairdrive primitives.
  *
- * For UI/MCP consumers that previously imported PodManager, FileManager, ACT,
- * WalletManager, SyncEngine etc. from @fairdrive/core. Use FdsClient for the
- * high-level S3-like API.
+ * Drop-in for @fairdrive/core. Pure crypto + bee-js — no fs/path/os imports,
+ * works in browser and Node.
+ *
+ * For Node-only primitives (SecureStore, SyncEngine), import from
+ * `@fairdatasociety/fds/fairdrive/node` instead.
  */
 
 export { PodManager } from './fairdrive/pod/PodManager.js'
@@ -35,9 +37,6 @@ export type { Wallet as FairdriveWallet, WalletManagerConfig } from './fairdrive
 export { SecureWallet, zeroBuffer } from './fairdrive/identity/SecureWallet.js'
 export type { SecureWalletData } from './fairdrive/identity/SecureWallet.js'
 
-export { SecureStore, getSecureStore, resetSecureStore } from './fairdrive/identity/SecureStore.js'
-export type { StoredWallet, SecureStoreConfig } from './fairdrive/identity/SecureStore.js'
-
 export {
   createFairdropKeystore,
   parseFairdropKeystore,
@@ -46,7 +45,7 @@ export {
 } from './fairdrive/identity/FairdropKeystore.js'
 export type { FairdropKeystore, FairdropPayload } from './fairdrive/identity/FairdropKeystore.js'
 
-export { SyncEngine } from './fairdrive/sync/SyncEngine.js'
+// Re-export type interfaces (no runtime code, browser-safe)
 export type {
   Change,
   Conflict,
@@ -60,3 +59,4 @@ export type {
   SyncProgressCallback,
   SyncEngineConfig,
 } from './fairdrive/sync/SyncEngine.js'
+export type { StoredWallet, SecureStoreConfig } from './fairdrive/identity/SecureStore.js'

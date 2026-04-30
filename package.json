@@ -34,6 +34,10 @@
       "import": "./dist/fairdrive-exports.js",
       "types": "./dist/fairdrive-exports.d.ts"
     },
+    "./fairdrive/node": {
+      "import": "./dist/fairdrive-node.js",
+      "types": "./dist/fairdrive-node.d.ts"
+    },
     "./fairdrop": {
       "import": "./dist/fairdrop-exports.js",
       "types": "./dist/fairdrop-exports.d.ts"
