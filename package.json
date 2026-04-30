@@ -1,6 +1,6 @@
 {
   "name": "@fairdatasociety/fds",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Fair Data Society SDK — sovereign data for TypeScript. Identity, storage, messaging, sharing, exchange. Complete rewrite (legacy fds.js abandoned 2022).",
   "type": "module",
   "main": "dist/index.js",

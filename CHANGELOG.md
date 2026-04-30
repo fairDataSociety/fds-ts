@@ -2,6 +2,37 @@
 
 All notable changes to `@fairdatasociety/fds` are documented in this file.
 
+## [1.1.0] — 2026-04-30
+
+### Added — subpath exports for direct consumers
+
+These subpaths exist so Fairdrop and Fairdrive can migrate off their internal
+workspace packages onto the consolidated SDK without rewriting against
+`FdsClient`. Existing `FdsClient` API unchanged.
+
+- `@fairdatasociety/fds/crypto` — BrowserCryptoProvider, NodeCryptoProvider,
+  ECDH, encryptSwarmRef, AES-GCM, Web3 keystore primitives
+- `@fairdatasociety/fds/identity` — Wallet, createKeystore, decryptKeystore,
+  HDWallet (ported from `@fds/identity`)
+- `@fairdatasociety/fds/access` — ACT (Access Control Trie)
+- `@fairdatasociety/fds/fairdrive` — browser-safe Fairdrive primitives
+  (PodManager, FileManager, ACT, WalletManager, SecureWallet, ChunkManager,
+  FairdropKeystore)
+- `@fairdatasociety/fds/fairdrive/node` — Node-only additions (SecureStore,
+  SyncEngine) — bundlers should not include this in browser builds
+- `@fairdatasociety/fds/fairdrop` — FairdropClient, GSOC primitives,
+  EscrowKeystore, DataEscrowABI, Node providers (FileStorageAdapter,
+  NodeCryptoProvider, EnvConfigProvider, NodeEncodingProvider), contract
+  address resolution
+
+### Verified
+
+- Keystore backwards-compat: keystores encrypted with the old workspace
+  `@fds/identity` decrypt cleanly on the new `/identity` subpath
+- Fairdrive desktop (Wails) builds and launches
+- Fairdrop UI builds (961 KB / 324 KB gz, +0.6% over pre-migration)
+- Fairdrop MCP starts via stdio with 24 tools registered
+
 ## [1.0.0] — 2026-04-30
 
 ### Complete rewrite
