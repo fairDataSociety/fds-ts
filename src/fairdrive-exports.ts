@@ -35,6 +35,17 @@ export type { Wallet as FairdriveWallet, WalletManagerConfig } from './fairdrive
 export { SecureWallet, zeroBuffer } from './fairdrive/identity/SecureWallet.js'
 export type { SecureWalletData } from './fairdrive/identity/SecureWallet.js'
 
+export { SecureStore, getSecureStore, resetSecureStore } from './fairdrive/identity/SecureStore.js'
+export type { StoredWallet, SecureStoreConfig } from './fairdrive/identity/SecureStore.js'
+
+export {
+  createFairdropKeystore,
+  parseFairdropKeystore,
+  validateKeystoreFormat,
+  getSubdomainFromAddress,
+} from './fairdrive/identity/FairdropKeystore.js'
+export type { FairdropKeystore, FairdropPayload } from './fairdrive/identity/FairdropKeystore.js'
+
 export { SyncEngine } from './fairdrive/sync/SyncEngine.js'
 export type {
   Change,
