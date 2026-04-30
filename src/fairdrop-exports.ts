@@ -64,3 +64,38 @@ export type { EscrowKeyEntry, EscrowKeyData } from './fairdrop/escrow-keystore.j
 
 // DataEscrow ABI for direct contract interaction
 export { DataEscrowABI } from './fairdrop/abi/DataEscrow.js'
+
+// Adapter providers (Node.js)
+export { FileStorageAdapter, MemoryStorageAdapter } from './fairdrop/storage/node.js'
+export { NodeCryptoProvider, BrowserCryptoProvider } from './fairdrop/crypto/index.js'
+export { EnvConfigProvider, StaticConfigProvider } from './fairdrop/config/node.js'
+export { NodeEncodingProvider } from './fairdrop/encoding/node.js'
+
+// Contract address resolution
+export { getDataEscrowAddress, isEscrowSupported } from './fairdrop/config/contracts.js'
+
+// Adapter type interfaces (for consumers building their own providers)
+export type {
+  StorageAdapter,
+  CryptoProvider,
+  EncodingProvider,
+  ConfigProvider,
+  WalletProvider,
+  ContractProvider,
+  TransactionReceipt,
+  ReadContractParameters,
+  WriteContractParameters,
+  SimulateContractParameters,
+  SimulateContractResult,
+  EstimateGasParameters,
+  TypedData as FairdropTypedData,
+} from './fairdrop/adapters/types.js'
+
+// Errors
+export { FairdropError, FairdropErrorCode } from './fairdrop/errors/index.js'
+
+// FairdropClient — full client (advanced consumers).
+// NOTE: Type signatures inherited from the original FairdropClient
+// have known mismatches with bee-js v11; SDK consumers should prefer
+// FdsClient. Exposed here to unblock @fairdrop/mcp migration.
+export { FairdropClient } from './fairdrop/client.js'
