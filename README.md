@@ -3,8 +3,10 @@
 > Sovereign data SDK for TypeScript — identity, storage, messaging, sharing, and trustless exchange. Encryption by default. Pluggable backends.
 
 [![License: BSD-3](https://img.shields.io/badge/license-BSD--3-blue)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-146_passing-green)]()
-[![Status](https://img.shields.io/badge/status-alpha-orange)]()
+[![Tests](https://img.shields.io/badge/tests-342_passing-green)]()
+[![Version](https://img.shields.io/badge/version-1.0.0-blue)]()
+
+> **⚠️ Complete rewrite** — version 1.0.0 is **not backwards-compatible** with the legacy [`fds.js`](https://github.com/fairDataSociety/fds.js) package (`@fairdatasociety/fds@0.2.x`, last updated February 2022, abandoned). The 1.x line shares the npm name but is otherwise an independent project. If you depend on the legacy SDK, pin to `@fairdatasociety/fds@0.2.3`. See [CHANGELOG.md](./CHANGELOG.md).
 
 ## What it does
 
