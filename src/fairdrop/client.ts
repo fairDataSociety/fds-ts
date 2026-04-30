@@ -148,7 +148,7 @@ export class FairdropClient {
 
     // If private key provided, create embedded wallet
     if (options.privateKey) {
-      import('@fairdrop/core/wallet').then(({ EmbeddedWalletProvider }) => {
+      import('./wallet/embedded.js').then(({ EmbeddedWalletProvider }) => {
         this.wallet = new EmbeddedWalletProvider(options.privateKey!)
       })
     } else if (options.wallet) {
@@ -1437,7 +1437,7 @@ export class FairdropClient {
     salt: Uint8Array,
     buyerPrivateKey: Uint8Array
   ): Promise<VerificationResult> {
-    const { verifyKeyCommitment: verifyCommitment } = await import('@fairdrop/core/crypto')
+    const { verifyKeyCommitment: verifyCommitment } = await import('./crypto/escrow.js')
 
     const escrow = await this.getEscrowDetails(escrowId)
 
@@ -2115,7 +2115,7 @@ export class FairdropClient {
   /**
    * Parse escrow ID from transaction receipt
    */
-  private parseEscrowIdFromReceipt(receipt: import('@fairdrop/core').TransactionReceipt): bigint {
+  private parseEscrowIdFromReceipt(receipt: import('./adapters/types.js').TransactionReceipt): bigint {
     // Compute EscrowCreated topic from ABI
     const escrowCreatedEvent = DataEscrowABI.find(
       (item) => item.type === 'event' && item.name === 'EscrowCreated'

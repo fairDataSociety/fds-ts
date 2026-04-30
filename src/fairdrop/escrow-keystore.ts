@@ -74,7 +74,7 @@ export class EscrowKeystore {
       status: 'created',
     }
 
-    await this.storage.setItem(ESCROW_KEYS_KEY, JSON.stringify(entries))
+    await this.storage.set(ESCROW_KEYS_KEY, JSON.stringify(entries))
   }
 
   /**
@@ -133,7 +133,7 @@ export class EscrowKeystore {
       entry.serializedEncryptedKey = await this.encryptData(serializedEncryptedKey, password)
     }
 
-    await this.storage.setItem(ESCROW_KEYS_KEY, JSON.stringify(entries))
+    await this.storage.set(ESCROW_KEYS_KEY, JSON.stringify(entries))
   }
 
   /**
@@ -142,7 +142,7 @@ export class EscrowKeystore {
   async deleteKey(escrowId: string): Promise<void> {
     const entries = await this.getAllEntries()
     delete entries[escrowId]
-    await this.storage.setItem(ESCROW_KEYS_KEY, JSON.stringify(entries))
+    await this.storage.set(ESCROW_KEYS_KEY, JSON.stringify(entries))
   }
 
   /**
@@ -169,7 +169,7 @@ export class EscrowKeystore {
    * Get all entries from storage
    */
   private async getAllEntries(): Promise<Record<string, EscrowKeyEntry>> {
-    const data = await this.storage.getItem(ESCROW_KEYS_KEY)
+    const data = await this.storage.get(ESCROW_KEYS_KEY)
     if (!data) {
       return {}
     }

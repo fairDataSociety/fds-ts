@@ -21,14 +21,14 @@ function createTestStorage(): any {
   const store: Record<string, string> = {}
   return {
     _store: store,
-    getItem: async (key: string) => store[key] ?? null,
-    setItem: async (key: string, value: string) => { store[key] = value },
-    removeItem: async (key: string) => { delete store[key] },
+    get: async (key: string) => store[key] ?? null,
+    set: async (key: string, value: string) => { store[key] = value },
+    remove: async (key: string) => { delete store[key] },
     keys: async () => Object.keys(store),
     session: {
-      getItem: () => null,
-      setItem: () => {},
-      removeItem: () => {},
+      get: () => null,
+      set: () => {},
+      remove: () => {},
     },
   }
 }

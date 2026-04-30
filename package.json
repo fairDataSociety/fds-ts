@@ -18,6 +18,26 @@
       "import": "./dist/adapters/index.js",
       "types": "./dist/adapters/index.d.ts"
     },
+    "./crypto": {
+      "import": "./dist/crypto/index.js",
+      "types": "./dist/crypto/index.d.ts"
+    },
+    "./identity": {
+      "import": "./dist/identity/index.js",
+      "types": "./dist/identity/index.d.ts"
+    },
+    "./access": {
+      "import": "./dist/access/index.js",
+      "types": "./dist/access/index.d.ts"
+    },
+    "./fairdrive": {
+      "import": "./dist/fairdrive-exports.js",
+      "types": "./dist/fairdrive-exports.d.ts"
+    },
+    "./fairdrop": {
+      "import": "./dist/fairdrop-exports.js",
+      "types": "./dist/fairdrop-exports.d.ts"
+    },
     "./cli": {
       "import": "./dist/cli/index.js",
       "types": "./dist/cli/index.d.ts"
